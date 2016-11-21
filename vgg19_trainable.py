@@ -16,9 +16,16 @@ class Vgg19:
     def __init__(self, vgg19_npy_path=None, trainable=True):
         if vgg19_npy_path is not None:
             self.data_dict = np.load(vgg19_npy_path, encoding='latin1').item()
+            print "Trained Weights Loaded"
         else:
-            self.data_dict = None
+            path = inspect.getfile(Vgg19)
+            path = os.path.abspath(os.path.join(path, os.pardir))
+            path = os.path.join(path, "vgg19.npy")
+            vgg19_npy_path = path
+            self.data_dict = np.load(vgg19_npy_path, encoding='latin1').item()
+            print "Orignal Weights Loaded"
 
+        print("npy file loaded")
         self.var_dict = {}
         self.trainable = trainable
 
@@ -84,7 +91,7 @@ class Vgg19:
         elif self.trainable:
             self.relu7 = tf.nn.dropout(self.relu7, 0.5)
 
-        self.fc8 = self.fc_layer(self.relu7, 4096, 1000, "fc8")
+        self.fc8 = self.fc_layer(self.relu7, 4096, 8, "fc8", retrain=self.trainable)
 
         self.prob = tf.nn.softmax(self.fc8, name="prob")
 
@@ -106,9 +113,9 @@ class Vgg19:
 
             return relu
 
-    def fc_layer(self, bottom, in_size, out_size, name):
+    def fc_layer(self, bottom, in_size, out_size, name, retrain=False):
         with tf.variable_scope(name):
-            weights, biases = self.get_fc_var(in_size, out_size, name)
+            weights, biases = self.get_fc_var(in_size, out_size, name, retrain=retrain)
 
             x = tf.reshape(bottom, [-1, in_size])
             fc = tf.nn.bias_add(tf.matmul(x, weights), biases)
@@ -124,17 +131,17 @@ class Vgg19:
 
         return filters, biases
 
-    def get_fc_var(self, in_size, out_size, name):
+    def get_fc_var(self, in_size, out_size, name, retrain=False):
         initial_value = tf.truncated_normal([in_size, out_size], 0.0, 0.001)
-        weights = self.get_var(initial_value, name, 0, name + "_weights")
+        weights = self.get_var(initial_value, name, 0, name + "_weights", retrain=retrain)
 
         initial_value = tf.truncated_normal([out_size], .0, .001)
-        biases = self.get_var(initial_value, name, 1, name + "_biases")
+        biases = self.get_var(initial_value, name, 1, name + "_biases", retrain=retrain)
 
         return weights, biases
 
-    def get_var(self, initial_value, name, idx, var_name):
-        if self.data_dict is not None and name in self.data_dict:
+    def get_var(self, initial_value, name, idx, var_name, retrain=False):
+        if self.data_dict is not None and name in self.data_dict and retrain is False:
             value = self.data_dict[name][idx]
         else:
             value = initial_value
