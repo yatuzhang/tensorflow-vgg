@@ -91,7 +91,7 @@ class Vgg19:
         elif self.trainable:
             self.relu7 = tf.nn.dropout(self.relu7, 0.5)
 
-        self.fc8 = self.fc_layer(self.relu7, 4096, 8, "fc8", retrain=self.trainable)
+        self.fc8 = self.fc_layer(self.relu7, 4096, 8, "fc8")
 
         self.prob = tf.nn.softmax(self.fc8, name="prob")
 
@@ -113,9 +113,9 @@ class Vgg19:
 
             return relu
 
-    def fc_layer(self, bottom, in_size, out_size, name, retrain=False):
+    def fc_layer(self, bottom, in_size, out_size, name, reinit=False):
         with tf.variable_scope(name):
-            weights, biases = self.get_fc_var(in_size, out_size, name, retrain=retrain)
+            weights, biases = self.get_fc_var(in_size, out_size, name, reinit=reinit)
 
             x = tf.reshape(bottom, [-1, in_size])
             fc = tf.nn.bias_add(tf.matmul(x, weights), biases)
@@ -131,17 +131,17 @@ class Vgg19:
 
         return filters, biases
 
-    def get_fc_var(self, in_size, out_size, name, retrain=False):
+    def get_fc_var(self, in_size, out_size, name, reinit=False):
         initial_value = tf.truncated_normal([in_size, out_size], 0.0, 0.001)
-        weights = self.get_var(initial_value, name, 0, name + "_weights", retrain=retrain)
+        weights = self.get_var(initial_value, name, 0, name + "_weights", reinit=reinit)
 
         initial_value = tf.truncated_normal([out_size], .0, .001)
-        biases = self.get_var(initial_value, name, 1, name + "_biases", retrain=retrain)
+        biases = self.get_var(initial_value, name, 1, name + "_biases", reinit=reinit)
 
         return weights, biases
 
-    def get_var(self, initial_value, name, idx, var_name, retrain=False):
-        if self.data_dict is not None and name in self.data_dict and retrain is False:
+    def get_var(self, initial_value, name, idx, var_name, reinit=False):
+        if self.data_dict is not None and name in self.data_dict and reinit is False:
             value = self.data_dict[name][idx]
         else:
             value = initial_value
